@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Energy Consumption Awareness</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-green: #10b981;
+            --dark-green: #059669;
+            --light-green: #d1fae5;
+            --primary-blue: #0ea5e9;
+            --dark-blue: #0284c7;
+            --light-blue: #e0f2fe;
+            --bg-white: #ffffff;
+            --bg-light: #f8fafc;
+            --text-dark: #1e293b;
+            --text-gray: #64748b;
+            --warning-yellow: #fbbf24;
+            --warning-red: #ef4444;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] {
+            --bg-white: #1e293b;
+            --bg-light: #0f172a;
+            --text-dark: #f1f5f9;
+            --text-gray: #cbd5e1;
+            --light-green: #064e3b;
+            --light-blue: #0c4a6e;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-light) 0%, #e8f5e9 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        [data-theme="dark"] body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-sm);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="dark"] nav {
+            background: rgba(30, 41, 59, 0.95);
+        }
+
+        nav.scrolled {
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--primary-green);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-green), var(--primary-blue));
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--primary-green);
+        }
+
+        .nav-links a:hover::after,
+        .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            border: 2px solid var(--primary-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+        }
+
+        .theme-toggle:hover {
+            background: var(--primary-green);
+            transform: rotate(180deg) scale(1.1);
+        }
+
+        .theme-toggle:hover .theme-icon {
+            filter: brightness(0) invert(1);
+        }
+
+        .theme-icon {
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .menu-toggle span {
+            width: 25px;
+            height: 3px;
+            background: var(--text-dark);
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        /* Page Sections */
+        .page {
+            min-height: 100vh;
+            padding: 120px 2rem 60px;
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .page.active {
+            display: block;
+            animation: pageSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes pageSlideIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px) scale(0.98);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            animation: slideDown 0.6s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-gray);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .card-content {
+            color: var(--text-gray);
+            line-height: 1.8;
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        /* Info Section */
+        .info-section {
+            background: var(--bg-white);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .info-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--light-green);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .info-item:hover {
+            transform: translateX(10px);
+            background: var(--primary-green);
+            color: white;
+        }
+
+        .info-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .info-text h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .chart-canvas {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .chart-legend {
+            margin-top: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+            color: white;
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+            animation: rotatePulse 3s linear infinite;
+        }
+
+        @keyframes rotatePulse {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .stat-card:nth-child(2) {
+            background: linear-gradient(135deg, var(--primary-blue), var(--dark-blue));
+        }
+
+        .stat-card:nth-child(3) {
+            background: linear-gradient(135deg, var(--warning-yellow), #f59e0b);
+        }
+
+        .stat-card:nth-child(4) {
+            background: linear-gradient(135deg, var(--warning-red), #dc2626);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-family: 'Space Mono', monospace;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Helpline Cards */
+        .helpline-card {
+            background: var(--bg-white);
+            border-left: 4px solid var(--primary-green);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+
+        .helpline-card:hover {
+            border-left-width: 8px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .helpline-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .helpline-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--light-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .helpline-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-green);
+            font-family: 'Space Mono', monospace;
+            margin: 1rem 0;
+        }
+
+        .helpline-description {
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
+
+        /* Button */
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Alert Box */
+        .alert {
+            background: #fef3c7;
+            border-left: 4px solid var(--warning-yellow);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        [data-theme="dark"] .alert {
+            background: #78350f;
+            color: #fef3c7;
+        }
+
+        .alert-icon {
+            display: inline-block;
+            margin-right: 0.5rem;
+            font-size: 1.25rem;
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, var(--text-dark), #0f172a);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        [data-theme="dark"] footer {
+            background: linear-gradient(135deg, #0f172a, #020617);
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .footer-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .footer-text {
+            opacity: 0.8;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+        }
+
+        /* Enhanced Chart Styles */
+        canvas {
+            transition: transform 0.3s ease, filter 0.3s ease;
+            cursor: pointer;
+        }
+
+        canvas:hover {
+            transform: scale(1.02);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                max-width: 100%;
+                padding: 0 1.5rem;
+            }
+
+            .nav-container {
+                padding: 1rem 1.5rem;
+            }
+
+            .page-title {
+                font-size: 2.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: flex;
+                z-index: 1001;
+            }
+
+            .nav-links {
+                position: fixed;
+                top: 70px;
+                right: -100%;
+                flex-direction: column;
+                background: var(--bg-white);
+                width: 280px;
+                max-width: 80vw;
+                padding: 2rem;
+                box-shadow: var(--shadow-lg);
+                border-radius: 0 0 0 16px;
+                transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                height: calc(100vh - 70px);
+                overflow-y: auto;
+            }
+
+            .nav-links.active {
+                right: 0;
+            }
+
+            .page-title {
+                font-size: 2rem;
+                line-height: 1.2;
+            }
+
+            .page-subtitle {
+                font-size: 1rem;
+            }
+
+            .page {
+                padding: 100px 1rem 40px;
+            }
+
+            .page-header {
+                margin-bottom: 2.5rem;
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .info-section {
+                padding: 2rem 1.5rem;
+            }
+
+            .info-grid {
+                gap: 1rem;
+            }
+
+            .stat-value {
+                font-size: 2.5rem;
+            }
+
+            .stat-label {
+                font-size: 0.9rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .chart-container {
+                padding: 1.5rem;
+            }
+
+            .chart-title {
+                font-size: 1.1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .card-icon {
+                width: 56px;
+                height: 56px;
+                font-size: 1.75rem;
+            }
+
+            .card-title {
+                font-size: 1.25rem;
+            }
+
+            .solution-card,
+            .helpline-card {
+                padding: 1.5rem;
+            }
+
+            .helpline-number {
+                font-size: 1.75rem;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .alert {
+                padding: 1.25rem;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-container {
+                padding: 1rem;
+            }
+
+            .logo {
+                font-size: 1.1rem;
+            }
+
+            .logo-icon {
+                width: 32px;
+                height: 32px;
+            }
+
+            .page-title {
+                font-size: 1.75rem;
+            }
+
+            .page-subtitle {
+                font-size: 0.95rem;
+            }
+
+            .page {
+                padding: 90px 1rem 30px;
+            }
+
+            .info-section {
+                padding: 1.5rem 1rem;
+            }
+
+            .card,
+            .solution-card,
+            .helpline-card {
+                padding: 1.25rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .chart-container {
+                padding: 1.25rem;
+            }
+
+            .chart-canvas {
+                max-width: 250px;
+            }
+
+            footer {
+                padding: 2rem 1rem;
+            }
+        }
+
+        /* Smooth transitions for all interactive elements */
+        a, button, .card, .solution-card, .helpline-card, .info-item, .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Progress bar for page transitions */
+        .progress-bar {
+            position: fixed;
+            top: 70px;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-green), var(--primary-blue));
+            width: 0;
+            transition: width 0.3s ease;
+            z-index: 999;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Scroll progress indicator */
+        .scroll-progress {
+            position: fixed;
+            top: 73px;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--primary-green));
+            width: 0%;
+            z-index: 998;
+            transition: width 0.1s ease;
+            opacity: 0.7;
+        }
+
+        /* Loading animation for charts */
+        @keyframes chartPulse {
+            0%, 100% {
+                opacity: 0.6;
+                transform: scale(0.95);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .chart-container.loading {
+            animation: chartPulse 1.5s ease-in-out infinite;
+        }
+
+        .chart-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--light-green);
+            border-top-color: var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Enhanced hover effects */
+        .info-item {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .info-item:hover::before {
+            left: 100%;
+        }
+
+        /* Mobile menu overlay */
+        @media (max-width: 768px) {
+            .nav-links.active::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: -1;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            nav, footer, .menu-toggle, .theme-toggle {
+                display: none;
+            }
+
+            .page {
+                display: block !important;
+                padding: 0;
+                page-break-after: always;
+            }
+
+            .card, .chart-container {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Landscape mobile optimization */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .page {
+                padding: 80px 1rem 30px;
+            }
+
+            .page-header {
+                margin-bottom: 2rem;
+            }
+
+            .page-title {
+                font-size: 1.75rem;
+            }
+
+            .stat-card {
+                padding: 1.25rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .card:hover,
+            .solution-card:hover,
+            .helpline-card:hover,
+            .stat-card:hover {
+                transform: none;
+            }
+
+            .info-item:hover {
+                transform: none;
+            }
+
+            /* Larger touch targets */
+            .nav-links a {
+                padding: 0.75rem 0;
+            }
+
+            button, .btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+
+        /* Animations */
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+
+        /* Solutions Section */
+        .solutions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .solution-card {
+            background: var(--bg-white);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--primary-green);
+        }
+
+        .solution-card:nth-child(2) { border-top-color: var(--primary-blue); }
+        .solution-card:nth-child(3) { border-top-color: var(--warning-yellow); }
+        .solution-card:nth-child(4) { border-top-color: var(--warning-red); }
+
+        .solution-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .solution-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--light-green);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .solution-card:nth-child(2) .solution-icon { background: var(--light-blue); }
+        .solution-card:nth-child(3) .solution-icon { background: #fef3c7; }
+        .solution-card:nth-child(4) .solution-icon { background: #fee2e2; }
+
+        [data-theme="dark"] .solution-card:nth-child(3) .solution-icon { background: #78350f; }
+        [data-theme="dark"] .solution-card:nth-child(4) .solution-icon { background: #7f1d1d; }
+
+        .solution-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .solution-description {
+            color: var(--text-gray);
+            line-height: 1.7;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <span>EnergyWatch</span>
+            </div>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#intro" class="nav-link active" data-page="intro">Introduction</a></li>
+                <li><a href="#appliances" class="nav-link" data-page="appliances">Appliances</a></li>
+                <li><a href="#report" class="nav-link" data-page="report">Report</a></li>
+                <li><a href="#help" class="nav-link" data-page="help">Help</a></li>
+            </ul>
+            <div class="nav-right">
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <div class="menu-toggle" id="menuToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+        <div class="progress-bar" id="progressBar"></div>
+    </nav>
+    <div class="scroll-progress" id="scrollProgress"></div>
+
+    <!-- Page 1: Introduction -->
+    <div id="intro" class="page active">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Idle Energy Consumption: A Hidden Power Loss</h1>
+                <p class="page-subtitle">Understanding vampire power and its impact on your electricity bill and the environment</p>
+            </div>
+
+            <div class="info-section">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem; color: var(--text-dark);">What is Idle Energy Consumption?</h2>
+                <p style="color: var(--text-gray); font-size: 1.1rem; line-height: 1.8; margin-bottom: 2rem;">
+                    Idle energy consumption, also known as "vampire power" or "phantom load," refers to the electricity consumed by electronic devices when they are plugged in but not actively in use. These devices continuously draw power in standby mode, leading to significant energy waste and increased electricity bills without you even realizing it.
+                </p>
+
+                <div class="info-grid">
+                    <div class="info-item fade-in-up stagger-1">
+                        <div class="info-icon">📺</div>
+                        <div class="info-text">
+                            <h3>Standby Devices</h3>
+                            <p>TVs, set-top boxes, and gaming consoles in standby mode</p>
+                        </div>
+                    </div>
+                    <div class="info-item fade-in-up stagger-2">
+                        <div class="info-icon">🔌</div>
+                        <div class="info-text">
+                            <h3>Chargers</h3>
+                            <p>Phone, laptop, and tablet chargers left plugged in</p>
+                        </div>
+                    </div>
+                    <div class="info-item fade-in-up stagger-3">
+                        <div class="info-icon">📡</div>
+                        <div class="info-text">
+                            <h3>Network Devices</h3>
+                            <p>Wi-Fi routers and modems running 24/7</p>
+                        </div>
+                    </div>
+                    <div class="info-item fade-in-up stagger-4">
+                        <div class="info-icon">❄️</div>
+                        <div class="info-text">
+                            <h3>Appliances</h3>
+                            <p>Air conditioners, microwaves, and washing machines on standby</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert">
+                <span class="alert-icon">⚠️</span>
+                <strong>Did You Know?</strong> Idle energy consumption can account for 5-10% of your total household electricity usage, costing the average Indian household ₹500-1500 extra per year!
+            </div>
+
+            <div style="margin-top: 3rem;">
+                <h2 style="font-size: 2rem; margin-bottom: 2rem; color: var(--text-dark); text-align: center;">Why Is This a Serious Problem?</h2>
+                
+                <div class="grid-3">
+                    <div class="card fade-in-up stagger-1">
+                        <div class="card-icon">💰</div>
+                        <h3 class="card-title">Increased Bills</h3>
+                        <p class="card-content">
+                            Phantom loads add unnecessary costs to your monthly electricity bill. Over a year, this can amount to significant expenses that could have been saved.
+                        </p>
+                    </div>
+                    <div class="card fade-in-up stagger-2">
+                        <div class="card-icon">⚡</div>
+                        <h3 class="card-title">Energy Wastage</h3>
+                        <p class="card-content">
+                            Millions of households wasting energy on idle devices creates massive strain on power grids and reduces overall energy efficiency.
+                        </p>
+                    </div>
+                    <div class="card fade-in-up stagger-3">
+                        <div class="card-icon">🌍</div>
+                        <h3 class="card-title">Environmental Impact</h3>
+                        <p class="card-content">
+                            Wasted electricity means more fossil fuel consumption, leading to increased carbon emissions and contributing to climate change.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 4rem;">
+                <h2 style="font-size: 2rem; margin-bottom: 2rem; color: var(--text-dark); text-align: center;">Practical Solutions</h2>
+                
+                <div class="solutions-grid">
+                    <div class="solution-card fade-in-up stagger-1">
+                        <div class="solution-icon">🔴</div>
+                        <h3 class="solution-title">Switch Off Completely</h3>
+                        <p class="solution-description">
+                            Turn off devices at the power outlet when not in use. Don't rely on standby mode. Make it a habit to unplug chargers after use.
+                        </p>
+                    </div>
+                    <div class="solution-card fade-in-up stagger-2">
+                        <div class="solution-icon">🔌</div>
+                        <h3 class="solution-title">Use Smart Plugs</h3>
+                        <p class="solution-description">
+                            Install smart plugs or power strips with switches to easily control multiple devices. Schedule automatic shutdowns during off-hours.
+                        </p>
+                    </div>
+                    <div class="solution-card fade-in-up stagger-3">
+                        <div class="solution-icon">⭐</div>
+                        <h3 class="solution-title">Energy-Efficient Appliances</h3>
+                        <p class="solution-description">
+                            Invest in BEE 5-star rated appliances that consume less standby power. Look for Energy Star certified products when purchasing new devices.
+                        </p>
+                    </div>
+                    <div class="solution-card fade-in-up stagger-4">
+                        <div class="solution-icon">🧠</div>
+                        <h3 class="solution-title">Raise Awareness</h3>
+                        <p class="solution-description">
+                            Educate family members about phantom loads. Create a checklist of devices to switch off before leaving home or going to bed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 2: Appliance-wise Report -->
+    <div id="appliances" class="page">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Appliance-wise Idle Energy Loss Report</h1>
+                <p class="page-subtitle">Detailed breakdown of vampire power consumption by common household devices</p>
+            </div>
+
+            <div class="grid-2">
+                <!-- TV Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 class="chart-title">📺 Television</h3>
+                    </div>
+                    <canvas id="tvChart" class="chart-canvas"></canvas>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--light-green); border-radius: 8px;">
+                        <p style="font-size: 0.95rem; color: var(--text-dark);">
+                            <strong>Idle Power Loss:</strong> 8-12W per hour<br>
+                            <strong>Annual Cost:</strong> ₹350-500<br>
+                            <strong>Solution:</strong> Use a power strip and switch off when not watching
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Router Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 class="chart-title">📡 Wi-Fi Router</h3>
+                    </div>
+                    <canvas id="routerChart" class="chart-canvas"></canvas>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--light-blue); border-radius: 8px;">
+                        <p style="font-size: 0.95rem; color: var(--text-dark);">
+                            <strong>Idle Power Loss:</strong> 6-10W per hour<br>
+                            <strong>Annual Cost:</strong> ₹280-450<br>
+                            <strong>Solution:</strong> Turn off at night or use a timer plug
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Chargers Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 class="chart-title">🔌 Chargers (Multiple)</h3>
+                    </div>
+                    <canvas id="chargersChart" class="chart-canvas"></canvas>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 8px;">
+                        <p style="font-size: 0.95rem; color: var(--text-dark);">
+                            <strong>Idle Power Loss:</strong> 0.5-2W per charger<br>
+                            <strong>Annual Cost:</strong> ₹150-300 (3-4 chargers)<br>
+                            <strong>Solution:</strong> Unplug immediately after device is charged
+                        </p>
+                    </div>
+                </div>
+
+                <!-- AC Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 class="chart-title">❄️ Air Conditioner</h3>
+                    </div>
+                    <canvas id="acChart" class="chart-canvas"></canvas>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: #fee2e2; border-radius: 8px;">
+                        <p style="font-size: 0.95rem; color: var(--text-dark);">
+                            <strong>Idle Power Loss:</strong> 3-5W per hour<br>
+                            <strong>Annual Cost:</strong> ₹200-350<br>
+                            <strong>Solution:</strong> Switch off at mains when not in season
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Microwave Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 class="chart-title">🍳 Microwave Oven</h3>
+                    </div>
+                    <canvas id="microwaveChart" class="chart-canvas"></canvas>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--light-green); border-radius: 8px;">
+                        <p style="font-size: 0.95rem; color: var(--text-dark);">
+                            <strong>Idle Power Loss:</strong> 3-4W per hour<br>
+                            <strong>Annual Cost:</strong> ₹180-250<br>
+                            <strong>Solution:</strong> Unplug when not in regular use
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Washing Machine Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3 class="chart-title">🧺 Washing Machine</h3>
+                    </div>
+                    <canvas id="washingChart" class="chart-canvas"></canvas>
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--light-blue); border-radius: 8px;">
+                        <p style="font-size: 0.95rem; color: var(--text-dark);">
+                            <strong>Idle Power Loss:</strong> 2-4W per hour<br>
+                            <strong>Annual Cost:</strong> ₹120-220<br>
+                            <strong>Solution:</strong> Keep switched off at outlet between uses
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert" style="margin-top: 3rem;">
+                <span class="alert-icon">💡</span>
+                <strong>Tip:</strong> The cumulative effect of all these devices can add up to 30-50W of continuous idle power consumption, costing you ₹1,500-2,500 annually!
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 3: Overall Report -->
+    <div id="report" class="page">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Overall Household Energy Consumption Analysis</h1>
+                <p class="page-subtitle">Comprehensive overview of your energy usage and potential savings</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card fade-in-up stagger-1">
+                    <div class="stat-value">350</div>
+                    <div class="stat-label">Total Monthly Units (kWh)</div>
+                </div>
+                <div class="stat-card fade-in-up stagger-2">
+                    <div class="stat-value">25</div>
+                    <div class="stat-label">Idle Energy Wasted (kWh)</div>
+                </div>
+                <div class="stat-card fade-in-up stagger-3">
+                    <div class="stat-value">₹180</div>
+                    <div class="stat-label">Monthly Cost Loss</div>
+                </div>
+                <div class="stat-card fade-in-up stagger-4">
+                    <div class="stat-value">15kg</div>
+                    <div class="stat-label">Monthly CO₂ Emissions</div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-top: 3rem;">
+                <div class="chart-container">
+                    <h3 class="chart-title" style="margin-bottom: 1.5rem;">Monthly Energy Breakdown</h3>
+                    <canvas id="monthlyChart" style="width: 100%; height: 300px;"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3 class="chart-title" style="margin-bottom: 1.5rem;">Idle vs Active Power Usage</h3>
+                    <canvas id="usageChart" class="chart-canvas"></canvas>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--primary-green);"></div>
+                            <span>Active Usage (93%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: var(--warning-red);"></div>
+                            <span>Idle Waste (7%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section" style="margin-top: 3rem;">
+                <h2 style="font-size: 1.75rem; margin-bottom: 1.5rem; color: var(--text-dark);">📊 Annual Impact Projection</h2>
+                
+                <div class="grid-3">
+                    <div style="padding: 1.5rem; background: var(--light-green); border-radius: 12px;">
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--primary-green); margin-bottom: 0.5rem;">300 kWh</div>
+                        <div style="color: var(--text-gray);">Total Idle Energy Wasted</div>
+                    </div>
+                    <div style="padding: 1.5rem; background: #fef3c7; border-radius: 12px;">
+                        <div style="font-size: 2rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem;">₹2,160</div>
+                        <div style="color: var(--text-gray);">Annual Cost Wasted</div>
+                    </div>
+                    <div style="padding: 1.5rem; background: #fee2e2; border-radius: 12px;">
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--warning-red); margin-bottom: 0.5rem;">180 kg</div>
+                        <div style="color: var(--text-gray);">Annual CO₂ Emissions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section" style="margin-top: 2rem; background: linear-gradient(135deg, var(--primary-green), var(--dark-green)); color: white;">
+                <h2 style="font-size: 1.75rem; margin-bottom: 1.5rem;">💡 Your Savings Potential</h2>
+                <div class="grid-2">
+                    <div>
+                        <h3 style="font-size: 1.3rem; margin-bottom: 1rem; opacity: 0.95;">By Reducing Idle Power by 50%</h3>
+                        <ul style="line-height: 2; opacity: 0.9; list-style-position: inside;">
+                            <li>Save 150 kWh annually</li>
+                            <li>Reduce bills by ₹1,080 per year</li>
+                            <li>Cut CO₂ emissions by 90 kg</li>
+                            <li>Extend appliance lifespan</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.3rem; margin-bottom: 1rem; opacity: 0.95;">By Eliminating 100% Idle Power</h3>
+                        <ul style="line-height: 2; opacity: 0.9; list-style-position: inside;">
+                            <li>Save 300 kWh annually</li>
+                            <li>Reduce bills by ₹2,160 per year</li>
+                            <li>Cut CO₂ emissions by 180 kg</li>
+                            <li>Contribute to national energy savings</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert" style="margin-top: 2rem;">
+                <span class="alert-icon">🎯</span>
+                <strong>Action Plan:</strong> Start with the biggest culprits (TV, AC, Router) and gradually implement solutions for all devices. Small changes lead to big savings!
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 4: Help & Support -->
+    <div id="help" class="page">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Electricity Help & Support – India</h1>
+                <p class="page-subtitle">Important helpline numbers and resources for electricity-related queries and emergencies</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="helpline-card fade-in-up stagger-1">
+                    <div class="helpline-header">
+                        <div class="helpline-icon">📞</div>
+                        <h3 style="font-size: 1.3rem; font-weight: 600;">National Power Helpline</h3>
+                    </div>
+                    <div class="helpline-number">1912</div>
+                    <p class="helpline-description">
+                        24/7 toll-free national helpline for electricity-related complaints, power outages, and emergency support across India. Available in multiple languages.
+                    </p>
+                </div>
+
+                <div class="helpline-card fade-in-up stagger-2" style="border-left-color: var(--primary-blue);">
+                    <div class="helpline-header">
+                        <div class="helpline-icon" style="background: var(--light-blue);">⚡</div>
+                        <h3 style="font-size: 1.3rem; font-weight: 600;">Energy Efficiency Bureau (BEE)</h3>
+                    </div>
+                    <div class="helpline-number">011-2617-1384</div>
+                    <p class="helpline-description">
+                        Bureau of Energy Efficiency helpline for guidance on energy-saving appliances, star ratings, energy audits, and efficiency programs.
+                    </p>
+                </div>
+
+                <div class="helpline-card fade-in-up stagger-3" style="border-left-color: var(--warning-yellow);">
+                    <div class="helpline-header">
+                        <div class="helpline-icon" style="background: #fef3c7;">🏢</div>
+                        <h3 style="font-size: 1.3rem; font-weight: 600;">State Electricity Boards</h3>
+                    </div>
+                    <div class="helpline-number">Varies</div>
+                    <p class="helpline-description">
+                        Contact your local State Electricity Board for billing queries, new connections, meter readings, and regional support. Numbers vary by state.
+                    </p>
+                </div>
+
+                <div class="helpline-card fade-in-up stagger-4" style="border-left-color: var(--warning-red);">
+                    <div class="helpline-header">
+                        <div class="helpline-icon" style="background: #fee2e2;">🚨</div>
+                        <h3 style="font-size: 1.3rem; font-weight: 600;">Emergency Services</h3>
+                    </div>
+                    <div class="helpline-number">112</div>
+                    <p class="helpline-description">
+                        National emergency number for immediate assistance with electrical hazards, fires, or life-threatening power-related situations.
+                    </p>
+                </div>
+            </div>
+
+            <div class="info-section" style="margin-top: 3rem;">
+                <h2 style="font-size: 1.75rem; margin-bottom: 1.5rem; color: var(--text-dark);">📋 State-wise Electricity Board Contacts</h2>
+                <div class="info-grid">
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Delhi</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">BSES: 19123 | Tata Power: 19120</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Maharashtra</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">MSEDCL: 1912</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Karnataka</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">BESCOM: 1912</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Tamil Nadu</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">TANGEDCO: 94987-94987</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">West Bengal</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">WBSEDCL: 1912</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Gujarat</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">DGVCL: 1912</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Uttar Pradesh</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">UPPCL: 1912</p>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+                        <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Punjab</h4>
+                        <p style="color: var(--text-gray); font-size: 0.9rem;">PSPCL: 1912</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section" style="margin-top: 2rem; background: var(--light-blue);">
+                <h2 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-dark);">📱 Online Resources</h2>
+                <ul style="line-height: 2; color: var(--text-gray);">
+                    <li><strong>BEE India Website:</strong> beeindia.gov.in - For energy efficiency standards and star ratings</li>
+                    <li><strong>UJALA Scheme:</strong> ujala.gov.in - LED bulb distribution and energy-saving programs</li>
+                    <li><strong>Energy Conservation:</strong> powermin.gov.in - Ministry of Power resources</li>
+                    <li><strong>Consumer Forums:</strong> For grievance redressal and consumer rights</li>
+                </ul>
+            </div>
+
+            <div class="alert" style="margin-top: 2rem;">
+                <span class="alert-icon">ℹ️</span>
+                <strong>Disclaimer:</strong> This information is provided for general guidance. Helpline numbers and contact details may vary by region and are subject to change. Please verify with your local electricity provider for the most accurate information.
+            </div>
+
+            <div style="margin-top: 3rem; text-align: center; padding: 2rem; background: linear-gradient(135deg, var(--primary-green), var(--dark-green)); border-radius: 16px; color: white;">
+                <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">🌱 Together We Can Make a Difference</h3>
+                <p style="opacity: 0.95; max-width: 600px; margin: 0 auto;">
+                    Every small action counts. By being conscious of our energy consumption and eliminating idle power waste, we contribute to a more sustainable future for India and the planet.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">⚡ EnergyWatch</div>
+            <p class="footer-text">
+                Empowering households to reduce idle energy consumption and save money while protecting the environment.
+            </p>
+            <p class="footer-text" style="font-size: 0.9rem; margin-top: 1rem;">
+                🌍 Together for a sustainable future | 💚 Every watt saved makes a difference
+            </p>
+            <div class="footer-links">
+                <a href="#intro">About</a>
+                <a href="#appliances">Appliances</a>
+                <a href="#report">Report</a>
+                <a href="#help">Contact</a>
+            </div>
+            <p style="margin-top: 2rem; font-size: 0.85rem; opacity: 0.7;">
+                © 2026 EnergyWatch. Information for educational purposes. Data sources: BEE India, Ministry of Power.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Theme Toggle Functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = themeToggle.querySelector('.theme-icon');
+        const html = document.documentElement;
+
+        // Check for saved theme preference or default to light mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        updateThemeIcon(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+            
+            // Re-render charts with updated colors
+            const activePage = document.querySelector('.page.active');
+            if (activePage && activePage.id === 'appliances') {
+                setTimeout(() => animateApplianceCharts(), 100);
+            } else if (activePage && activePage.id === 'report') {
+                setTimeout(() => animateReportCharts(), 100);
+            }
+        });
+
+        function updateThemeIcon(theme) {
+            themeIcon.textContent = theme === 'light' ? '🌙' : '☀️';
+        }
+
+        // Navigation functionality
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page');
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinksContainer = document.getElementById('navLinks');
+        const navbar = document.getElementById('navbar');
+        const progressBar = document.getElementById('progressBar');
+
+        // Page navigation with progress bar
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetPage = link.getAttribute('data-page');
+                
+                // Show progress bar
+                progressBar.style.width = '0%';
+                progressBar.style.transition = 'width 0.5s ease';
+                setTimeout(() => {
+                    progressBar.style.width = '100%';
+                }, 10);
+                
+                // Update active states
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                
+                // Show target page
+                setTimeout(() => {
+                    pages.forEach(page => {
+                        page.classList.remove('active');
+                        if (page.id === targetPage) {
+                            page.classList.add('active');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            
+                            // Re-animate charts when page becomes active
+                            setTimeout(() => {
+                                if (targetPage === 'appliances') {
+                                    animateApplianceCharts();
+                                } else if (targetPage === 'report') {
+                                    animateReportCharts();
+                                }
+                            }, 300);
+                        }
+                    });
+                    
+                    // Hide progress bar
+                    setTimeout(() => {
+                        progressBar.style.transition = 'width 0.3s ease, opacity 0.3s ease';
+                        progressBar.style.opacity = '0';
+                        setTimeout(() => {
+                            progressBar.style.width = '0%';
+                            progressBar.style.opacity = '1';
+                        }, 300);
+                    }, 100);
+                }, 200);
+
+                // Close mobile menu
+                navLinksContainer.classList.remove('active');
+            });
+        });
+
+        // Mobile menu toggle
+        menuToggle.addEventListener('click', () => {
+            navLinksContainer.classList.toggle('active');
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+
+            // Update scroll progress
+            const scrollProgress = document.getElementById('scrollProgress');
+            const activePage = document.querySelector('.page.active');
+            if (activePage) {
+                const windowHeight = window.innerHeight;
+                const documentHeight = activePage.scrollHeight;
+                const scrollTop = window.scrollY;
+                const scrollPercent = (scrollTop / (documentHeight - windowHeight)) * 100;
+                scrollProgress.style.width = Math.min(scrollPercent, 100) + '%';
+            }
+        });
+
+        // Enhanced animated pie chart drawing function
+        function drawAnimatedPieChart(canvasId, activePercent, idlePercent, activeColor, idleColor, animationProgress = 1) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 10;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply easing to animation progress
+            const easeProgress = 1 - Math.pow(1 - animationProgress, 3); // Cubic ease out
+
+            // Draw active slice with animation
+            const activeAngle = (activePercent / 100) * 2 * Math.PI * easeProgress;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + activeAngle);
+            ctx.closePath();
+            
+            // Add gradient
+            const activeGradient = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+            activeGradient.addColorStop(0, activeColor);
+            activeGradient.addColorStop(1, '#059669');
+            ctx.fillStyle = activeGradient;
+            ctx.fill();
+
+            // Add shadow
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4;
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+
+            // Draw idle slice with animation
+            if (easeProgress > 0.5) {
+                const idleProgress = Math.min(1, (easeProgress - 0.5) * 2);
+                const idleAngle = (idlePercent / 100) * 2 * Math.PI * idleProgress;
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, -Math.PI / 2 + activeAngle, -Math.PI / 2 + activeAngle + idleAngle);
+                ctx.closePath();
+                
+                // Add gradient
+                const idleGradient = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+                idleGradient.addColorStop(0, idleColor);
+                idleGradient.addColorStop(1, '#dc2626');
+                ctx.fillStyle = idleGradient;
+                ctx.fill();
+
+                // Add shadow
+                ctx.shadowColor = 'rgba(239, 68, 68, 0.3)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 4;
+                ctx.fill();
+                ctx.shadowColor = 'transparent';
+            }
+
+            // Draw center circle for donut effect with animation
+            const centerRadius = radius * 0.6 * Math.min(1, easeProgress * 1.5);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
+            
+            // Use theme-appropriate background
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            ctx.fillStyle = isDark ? '#1e293b' : '#ffffff';
+            ctx.fill();
+
+            // Add inner shadow
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, centerRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw percentage text with fade-in animation
+            if (easeProgress > 0.7) {
+                const textOpacity = Math.min(1, (easeProgress - 0.7) / 0.3);
+                ctx.globalAlpha = textOpacity;
+                
+                const displayPercent = Math.round(idlePercent * easeProgress);
+                ctx.fillStyle = isDark ? '#f1f5f9' : '#1e293b';
+                ctx.font = 'bold 28px Outfit';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${displayPercent}%`, centerX, centerY - 5);
+                
+                ctx.font = '13px Outfit';
+                ctx.fillStyle = isDark ? '#cbd5e1' : '#64748b';
+                ctx.fillText('Idle Loss', centerX, centerY + 18);
+                
+                ctx.globalAlpha = 1;
+            }
+
+            // Add hover glow effect
+            canvas.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.filter = 'drop-shadow(0 8px 16px rgba(16, 185, 129, 0.2))';
+            });
+            
+            canvas.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.filter = 'none';
+            });
+        }
+
+        // Animate pie chart with smooth progression
+        function animatePieChart(canvasId, activePercent, idlePercent, activeColor, idleColor, delay = 0) {
+            setTimeout(() => {
+                let progress = 0;
+                const duration = 1500; // 1.5 seconds
+                const startTime = Date.now();
+
+                function animate() {
+                    const elapsed = Date.now() - startTime;
+                    progress = Math.min(elapsed / duration, 1);
+
+                    drawAnimatedPieChart(canvasId, activePercent, idlePercent, activeColor, idleColor, progress);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                }
+
+                animate();
+            }, delay);
+        }
+
+        // Enhanced bar chart with animations
+        function drawAnimatedBarChart(canvasId, animationProgress = 1) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const parentWidth = canvas.parentElement.clientWidth;
+            const width = canvas.width = Math.max(300, parentWidth - 64);
+            const height = canvas.height = 300;
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            const activeData = [310, 325, 340, 335, 350, 345];
+            const idleData = [22, 24, 25, 23, 25, 24];
+            
+            const maxValue = Math.max(...activeData.map((v, i) => v + idleData[i]));
+            const barWidth = Math.max(30, (width - 100) / months.length / 2.5);
+            const chartHeight = height - 60;
+            const spacing = (width - 100 - barWidth * months.length * 2) / (months.length + 1);
+            
+            // Apply easing
+            const easeProgress = 1 - Math.pow(1 - animationProgress, 3);
+            
+            // Get theme colors
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#cbd5e1' : '#94a3b8';
+            const labelColor = isDark ? '#f1f5f9' : '#1e293b';
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = 20 + (chartHeight - 20) * i / 4;
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(width - 20, y);
+                ctx.stroke();
+                
+                // Y-axis labels
+                ctx.fillStyle = textColor;
+                ctx.font = '11px Outfit';
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round(maxValue * (1 - i / 4)), 45, y + 4);
+            }
+            
+            // Draw bars with animation
+            months.forEach((month, i) => {
+                const x = 60 + spacing * (i + 1) + barWidth * i * 2;
+                const activeHeight = (activeData[i] / maxValue) * chartHeight * easeProgress;
+                const idleHeight = (idleData[i] / maxValue) * chartHeight * easeProgress;
+                
+                // Active bar with gradient
+                const activeGradient = ctx.createLinearGradient(0, height - 40 - activeHeight, 0, height - 40);
+                activeGradient.addColorStop(0, '#10b981');
+                activeGradient.addColorStop(1, '#059669');
+                ctx.fillStyle = activeGradient;
+                
+                // Add shadow
+                ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 3;
+                
+                // Rounded corners
+                roundRect(ctx, x, height - 40 - activeHeight, barWidth * 0.9, activeHeight, 6);
+                ctx.shadowColor = 'transparent';
+                
+                // Idle bar with gradient
+                const idleGradient = ctx.createLinearGradient(0, height - 40 - idleHeight, 0, height - 40);
+                idleGradient.addColorStop(0, '#ef4444');
+                idleGradient.addColorStop(1, '#dc2626');
+                ctx.fillStyle = idleGradient;
+                
+                ctx.shadowColor = 'rgba(239, 68, 68, 0.3)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 3;
+                
+                roundRect(ctx, x + barWidth, height - 40 - idleHeight, barWidth * 0.9, idleHeight, 6);
+                ctx.shadowColor = 'transparent';
+                
+                // Month label
+                ctx.fillStyle = textColor;
+                ctx.font = '12px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(month, x + barWidth, height - 20);
+                
+                // Value labels on hover effect
+                if (easeProgress === 1) {
+                    ctx.fillStyle = labelColor;
+                    ctx.font = 'bold 11px Outfit';
+                    ctx.fillText(activeData[i], x + barWidth * 0.45, height - 45 - activeHeight);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillText(idleData[i], x + barWidth * 1.45, height - 45 - idleHeight);
+                }
+            });
+            
+            // Legend with animation
+            if (easeProgress > 0.5) {
+                const legendOpacity = Math.min(1, (easeProgress - 0.5) * 2);
+                ctx.globalAlpha = legendOpacity;
+                
+                // Active legend
+                ctx.fillStyle = '#10b981';
+                roundRect(ctx, width - 150, 20, 20, 20, 4);
+                ctx.fillStyle = labelColor;
+                ctx.font = '13px Outfit';
+                ctx.textAlign = 'left';
+                ctx.fillText('Active (kWh)', width - 120, 35);
+                
+                // Idle legend
+                ctx.fillStyle = '#ef4444';
+                roundRect(ctx, width - 150, 50, 20, 20, 4);
+                ctx.fillText('Idle (kWh)', width - 120, 65);
+                
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Helper function for rounded rectangles
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Animate bar chart
+        function animateBarChart(canvasId, delay = 0) {
+            setTimeout(() => {
+                let progress = 0;
+                const duration = 1800;
+                const startTime = Date.now();
+
+                function animate() {
+                    const elapsed = Date.now() - startTime;
+                    progress = Math.min(elapsed / duration, 1);
+
+                    drawAnimatedBarChart(canvasId, progress);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                }
+
+                animate();
+            }, delay);
+        }
+
+        // Animate stats counter
+        function animateCounter(element, target, duration = 2000, suffix = '') {
+            let start = 0;
+            const increment = target / (duration / 16);
+            const startTime = Date.now();
+
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const current = Math.round(target * easeProgress);
+                
+                element.textContent = current + suffix;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    element.textContent = target + suffix;
+                }
+            }
+
+            update();
+        }
+
+        // Initialize and animate all appliance charts
+        function animateApplianceCharts() {
+            // Set canvas size with responsive consideration
+            const canvases = document.querySelectorAll('#appliances canvas');
+            canvases.forEach(canvas => {
+                const size = Math.min(300, canvas.parentElement.clientWidth - 64);
+                canvas.width = size;
+                canvas.height = size;
+                canvas.style.transition = 'transform 0.3s ease, filter 0.3s ease';
+            });
+
+            // Animate charts with staggered delays
+            animatePieChart('tvChart', 92, 8, '#10b981', '#ef4444', 0);
+            animatePieChart('routerChart', 94, 6, '#10b981', '#ef4444', 200);
+            animatePieChart('chargersChart', 97, 3, '#10b981', '#ef4444', 400);
+            animatePieChart('acChart', 96, 4, '#10b981', '#ef4444', 600);
+            animatePieChart('microwaveChart', 97, 3, '#10b981', '#ef4444', 800);
+            animatePieChart('washingChart', 98, 2, '#10b981', '#ef4444', 1000);
+        }
+
+        // Initialize and animate report page charts
+        function animateReportCharts() {
+            // Set canvas size
+            const reportCanvases = document.querySelectorAll('#report canvas');
+            reportCanvases.forEach(canvas => {
+                if (canvas.id === 'usageChart') {
+                    const size = Math.min(300, canvas.parentElement.clientWidth - 64);
+                    canvas.width = size;
+                    canvas.height = size;
+                    canvas.style.transition = 'transform 0.3s ease, filter 0.3s ease';
+                }
+            });
+
+            // Animate usage pie chart
+            animatePieChart('usageChart', 93, 7, '#10b981', '#ef4444', 0);
+            
+            // Animate bar chart
+            animateBarChart('monthlyChart', 500);
+
+            // Animate stat counters
+            const statCards = document.querySelectorAll('.stat-card .stat-value');
+            if (statCards.length >= 4) {
+                setTimeout(() => animateCounter(statCards[0], 350, 2000, ''), 200);
+                setTimeout(() => animateCounter(statCards[1], 25, 2000, ''), 400);
+                setTimeout(() => animateCounter(statCards[2], 180, 2000, '₹'), 600);
+                setTimeout(() => animateCounter(statCards[3], 15, 2000, 'kg'), 800);
+            }
+        }
+
+        // Initialize charts on page load
+        function initCharts() {
+            // Initialize intro page if active
+            const activePage = document.querySelector('.page.active');
+            if (activePage && activePage.id === 'appliances') {
+                animateApplianceCharts();
+            } else if (activePage && activePage.id === 'report') {
+                animateReportCharts();
+            }
+        }
+
+        // Wait for page load
+        window.addEventListener('load', () => {
+            initCharts();
+            
+            // Initial animation for first page
+            setTimeout(() => {
+                const activePage = document.querySelector('.page.active');
+                if (activePage && activePage.id === 'intro') {
+                    // Trigger intro animations
+                    document.querySelectorAll('#intro .fade-in-up').forEach((el, index) => {
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'translateY(0)';
+                        }, index * 100);
+                    });
+                }
+            }, 300);
+        });
+
+        // Re-initialize charts when window is resized
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                const activePage = document.querySelector('.page.active');
+                if (activePage && activePage.id === 'appliances') {
+                    animateApplianceCharts();
+                } else if (activePage && activePage.id === 'report') {
+                    animateReportCharts();
+                }
+            }, 250);
+        });
+
+        // Enhanced scroll animations
+        const observerOptions = {
+            threshold: 0.15,
+            rootMargin: '0px 0px -80px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    
+                    // Add additional animation classes
+                    if (entry.target.classList.contains('card')) {
+                        entry.target.style.animation = 'slideUp 0.6s ease forwards';
+                    }
+                }
+            });
+        }, observerOptions);
+
+        // Observe all animated elements
+        document.querySelectorAll('.fade-in-up, .card, .solution-card, .helpline-card').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Add parallax effect to page headers
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const headers = document.querySelectorAll('.page-header');
+            headers.forEach(header => {
+                if (header.getBoundingClientRect().top < window.innerHeight) {
+                    header.style.transform = `translateY(${scrolled * 0.1}px)`;
+                }
+            });
+        });
+
+        // Touch swipe support for mobile page navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        function handleSwipe() {
+            const swipeThreshold = 100;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                const currentPage = document.querySelector('.page.active');
+                const currentIndex = Array.from(pages).indexOf(currentPage);
+
+                if (diff > 0 && currentIndex < pages.length - 1) {
+                    // Swipe left - next page
+                    navLinks[currentIndex + 1].click();
+                } else if (diff < 0 && currentIndex > 0) {
+                    // Swipe right - previous page
+                    navLinks[currentIndex - 1].click();
+                }
+            }
+        }
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const currentPage = document.querySelector('.page.active');
+            const currentIndex = Array.from(pages).indexOf(currentPage);
+
+            if (e.key === 'ArrowRight' && currentIndex < pages.length - 1) {
+                navLinks[currentIndex + 1].click();
+            } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
+                navLinks[currentIndex - 1].click();
+            }
+        });
+
+        // Lazy load animations - performance optimization
+        const lazyAnimationObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-in');
+                    lazyAnimationObserver.unobserve(entry.target);
+                }
+            });
+        }, {
+            rootMargin: '50px'
+        });
+
+        // Apply lazy animation observer
+        document.querySelectorAll('.card, .solution-card, .helpline-card, .stat-card').forEach(el => {
+            lazyAnimationObserver.observe(el);
+        });
+    </script>
+</body>
+</html>
