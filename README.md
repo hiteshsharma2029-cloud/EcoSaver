@@ -1,0 +1,1 @@
+Idle Energy Saver is a web-based simulation app that visualizes hidden standby power consumption of household appliances. Using real-time simulated data, interactive gauges, and charts, it raises awareness about vampire energy and promotes energy-efficient, sustainable living without requiring physical hardware.
